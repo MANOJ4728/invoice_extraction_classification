@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload Success</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+</head>
+<body>
+    <div class="container mt-5">
+        <h1 class="text-center">✌️UPLOADED SUCCESSFULLY✌️</h1>
+        
+        <!-- Display Key-Value Pairs -->
+        <h3 class="mt-4">👉ENTITIES👈</h3>
+        <table class="table table-bordered">
+            <tbody>
+                {% if gpt_response %}
+                    {% for key, value in gpt_response.items() %}
+                        {% if key != 'line_items' %}
+                            <tr>
+                                <th>{{ key }}</th>
+                                <td>{{ value }}</td>
+                            </tr>
+                        {% endif %}
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="2">No key-value pairs found.</td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+        
+        <!-- Display Line Items -->
+        <h3 class="mt-4">👉LINE-ITEMS👈</h3>
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>Description</th>
+                    <th>Quantity</th>
+                    <th>Amount</th>
+                    <th>purposes</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if gpt_response and gpt_response.line_items %}
+                    {% for item in gpt_response.line_items %}
+                        <tr>
+                            <td>{{ item.description }}</td>
+                            <td>{{ item.quantity }}</td>
+                            <td>{{ item.amount }}</td>
+                            <td>{{ item.purposes }}</td>
+                        </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="4">No line items found.</td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+        
+        <div class="text-center mt-4">
+            <a href="/" class="btn btn-primary">Upload Another File</a>
+        </div>
+    </div>
+</body>
+</html>
