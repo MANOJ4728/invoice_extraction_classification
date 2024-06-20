@@ -19,6 +19,7 @@ S3_BUCKET_NAME = os.environ.get("S3_BUCKET_NAME")
 
 client = MongoClient(os.getenv("MONGO_URI"))
 db = client[os.getenv("DB_NAME")]
+flag=0
 
 s3_client = boto3.client(
     "s3",
@@ -38,42 +39,40 @@ with open("keywords.json", "r") as json_file:
 
 regular_bill_format = {
     "invoice_number": "",
-    "invoice_date": "",
-    "invoice_amount": "",
+    "invoice_date": "bill_date_value or issued_date_value",
+    "invoice_amount": "invoice_amount_value",
     "payment_due_date": "",
     "vendor_name": "",
     "vendor_address": "",
-    "contract_number": "",
-    # "account_number": "",
     "customer_number": "",
     "page_numbers": [],
-    "all_addresses": [],
-    "Taxes": "",
+    "all_addresses": ['vendor_address','customer_address'],
+    "Taxes":"",
     "discounts": "",
     "payments/adjustments/credits": "",
-    "previous_month_balance": "",
-    "current_month_charges": "",
-    "delivery_charges": "",
-    "line_items": ["description","quantity","amount","purposes"],
+    "delivery_charges/Freight charges": "",
+    "line_items": ["description","quantity","unit_price","net_amount","purposes"],
 }
    
 
 utility_bill_format = {
-    "invoice_date": "",
+    "invoice_number":"",
+    "invoice_date": "bill_date_vlaue or issued_date_value",
+    "invoice_amount": "invoice_amount_value",
     "payment_due_date": "",
     "vendor_name": "",
     "vendor_address": "",
-    "contract_number": "",
+    # "contract_number": "",
     "account_number": "",
-    "customer_number": "",
+    # "customer_number": "",
     "page_numbers": [],
-    "all_addresses": [],
-    "Taxes": "",
-    "discounts": "",
+    "all_addresses": ['vendor_address','customer_address'],
+    "Taxes": "total_tax_amount_value",
+    "discounts": "total_discounts_amount_value",
     "payments/adjustments/credits": "",
     "previous_month_balance": "",
-    "current_month_charges": [],
-    "line_items": ["description","quantity","amount","pos"],
+    "current_month_charges": ["current_month_charges_amount_value"],
+    "line_items": ["description","current_charges","purposes"],
     "delivery_charges": "",
     "total_amount_due": "",
     "description": [],
@@ -134,29 +133,34 @@ def upload():
             "upload_success.html", gpt_response=gpt_response
         )
     else:
-        print("GPT processing failed")
-        return jsonify({"error": "GPT processing failed"}), 500
+        flag=flag+1
+        if flag<3:
+            print("GPT processing failed trying again by sending to gpt server")
+            gpt_function(extracted_text)
+        else:    
+            return jsonify({"error": "GPT processing failed"}), 500
 
 def gpt_function(extracted_text):
-    prompt = (
-    f"You are a meticulous accountant processing an invoice. Carefully examine the text extracted from PDF files: '{extracted_text}'.\n"
-    f"Utility bills provide services related to {keywords['type_of_utility']} and contain account numbers and details like {keywords['utility_entites']}.\n"
-    f"The description for the utility bills may include any of the following words: {keywords['utility_entites']}.\n"
-    f"Regular bills contain invoice entities like invoice number, date, amount, and line items.\n"
-    f"Your task is to determine whether the bill is a regular invoice or a utility bill, based on the context provided.\n"
-    f"Do not include any extra content or words or headings like Regular bill: etc or like these keywords on top of the gpt response just give the response in mentioned format only follow this strictly."
-    f"If it is a utility bill, extract the following details only in the required format,follow this format strictly dont give any extra word other than i asked: {utility_bill_format}.\n"
-    f"If it is a regular bill, extract the following details only in the required format,follow this format strictly dont give any extra word other than i asked:: {regular_bill_format}.\n"
-    f"For regular bills, consider each description from the list and map it to the respective primary services from the list given {keywords['primary_Services']}.give primary services only from the list only,dont include outside content\n"
-    f"Each description should contain only one primary service mapped to it from the given list.\n"
-    f"Avoid considering line items where their description matches related to taxes, shipping charges, freight charges, delivery charges, etc., mentioned in this list: {keywords['lineitems']}.\n"
-    f"If the quantity or number of items purchased or price is zero, also consider it as a line item.\n"
-    f"Don't miss any line items. Carefully examine the text and extract the full number of line items.\n"
-    f"Please follow the instructions carefully and avoid extracting irrelevant lines. Do not include any formatting other than what is asked.\n"
-    f"Strictly follow the format. Do not include any text other than the required format."
-)
-
-
+    prompt=(
+        f"You are a meticulous accountant processing an invoice. Carefully examine the text extracted from PDF files: '{extracted_text}'.\n"
+        f"Examine the extracted text and classify it whether it is utility bill or regular bill\n"
+        f"If it is utility bill it provides following services {keywords['type_of_utility']} and the entities like {keywords['utility_entites']}"
+        f"and mainly every utility bill contains account number and examine correctly if it satisfies following constraints mentioned consider it as utility bill"
+        f"If it is a utility bill, extract the following details only in the required format,follow this format strictly dont give any extra word other than i asked: {utility_bill_format}.\n" 
+        f"If it is a regular bill,contains the following details like invoice number,date,amount and line items\n"
+        f"If it is a regular bill, extract the following details only in the required format,follow this format strictly dont give any extra word other than i asked:: {regular_bill_format}.\n"
+        f"Do not include any extra content or words or headings like Regular bill: etc or like these keywords on top of the gpt response just give the response in mentioned format only follow this strictly."
+        f"For regular bills, consider each description from the list and map it to the respective primary services only from the list given {keywords['primary_Services']}\,don't give purposes that are not present in the given list"
+        f"Each description should contain only one primary service from the list given the primary service should be anyone of those from the list dont give outside from the list.\n"
+        f"Dont give purposes for the descriptions that are not present in the given list."
+        f"For regular bills,vendor_Address will be the 'remit to' addresss and dont consider 'bill to' as vendor address"
+        f"For regular bills,please consider total tax amount and discounts if present in the text consider the last page invoice total as final amount"
+        f"Avoid considering line items where their description matches related to taxes, shipping charges, freight charges, delivery charges, etc., mentioned in this list: {keywords['notlineitems']}.\n"
+        f"If the quantity or number of items purchased or price is zero, also consider it as a line item.\n"
+        f"Don't miss any line items. Carefully examine the text and extract the full number of line items.\n"
+        f"Please follow the instructions carefully and avoid extracting irrelevant lines. Do not include any formatting other than what is asked.\n" 
+        f"Strictly follow the format. Do not include any text other than the required format."      
+    )
     key = os.environ.get("OPENAI_KEY")
     response = requests.post(
         url="https://api.openai.com/v1/chat/completions",
@@ -181,11 +185,9 @@ def gpt_function(extracted_text):
         choices: dict = json.get("choices", [None])[0]
         message: dict = choices.get("message") if choices else None
         content: str = message.get("content") if message else None
-        print("hiiiiiiiiiiiiiiiii")
         print(type(content))
         if content:
             try:
-                print(content)
                 return eval(content)
             except Exception as e:
                 pp.pprint(json)

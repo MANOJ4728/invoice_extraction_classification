@@ -8,10 +8,10 @@
 </head>
 <body>
     <div class="container mt-5">
-        <h1 class="text-center">✌️UPLOADED SUCCESSFULLY✌️</h1>
+        <h1 class="text-center">UPLOADED SUCCESSFULLY</h1>
         
         <!-- Display Key-Value Pairs -->
-        <h3 class="mt-4">👉ENTITIES👈</h3>
+        <h3 class="mt-4">ENTITIES</h3>
         <table class="table table-bordered">
             <tbody>
                 {% if gpt_response %}
@@ -32,31 +32,57 @@
         </table>
         
         <!-- Display Line Items -->
-        <h3 class="mt-4">👉LINE-ITEMS👈</h3>
+        <h3 class="mt-4">LINE-ITEMS</h3>
         <table class="table table-bordered">
-            <thead>
-                <tr>
-                    <th>Description</th>
-                    <th>Quantity</th>
-                    <th>Amount</th>
-                    <th>purposes</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% if gpt_response and gpt_response.line_items %}
-                    {% for item in gpt_response.line_items %}
-                        <tr>
-                            <td>{{ item.description }}</td>
-                            <td>{{ item.quantity }}</td>
-                            <td>{{ item.amount }}</td>
-                            <td>{{ item.purposes }}</td>
-                        </tr>
-                    {% endfor %}
-                {% else %}
+            {% if 'account_number' in gpt_response %}
+                <thead>
                     <tr>
-                        <td colspan="4">No line items found.</td>
+                        <th>Description</th>
+                        <th>Current Charges</th>
+                        <th>Purposes</th>
                     </tr>
-                {% endif %}
+                </thead>
+                <tbody>
+                    {% if gpt_response.line_items %}
+                        {% for item in gpt_response.line_items %}
+                            <tr>
+                                <td>{{ item.description }}</td>
+                                <td>{{ item.current_charges }}</td>
+                                <td>{{ item.purposes }}</td>
+                            </tr>
+                        {% endfor %}
+                    {% else %}
+                    <tr>
+                        <td colspan="3">No line items found.</td>
+                    </tr>
+                    {% endif %}
+            {% else %}
+                <thead>
+                    <tr>
+                        <th>Description</th>
+                        <th>Quantity</th>
+                        <th>Unit Price</th>
+                        <th>Net Amount</th>
+                        <th>Purposes</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if gpt_response.line_items %}
+                        {% for item in gpt_response.line_items %}
+                            <tr>
+                                <td>{{ item.description }}</td>
+                                <td>{{ item.quantity }}</td>
+                                <td>{{ item.unit_price }}</td>
+                                <td>{{ item.net_amount }}</td>
+                                <td>{{ item.purposes }}</td>
+                            </tr>
+                        {% endfor %}
+                    {% else %}
+                    <tr>
+                        <td colspan="5">No line items found.</td>
+                    </tr>
+                    {% endif %}
+            {% endif %}
             </tbody>
         </table>
         
